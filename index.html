@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PROJECT PLAYTIME — WEB EDITION</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="/socket.io/socket.io.js"></script>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<!-- socket.io removed: offline/singleplayer mode -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{overflow:hidden;background:#000;font-family:'Segoe UI',Tahoma,sans-serif;cursor:default;user-select:none;}
@@ -1098,34 +1098,8 @@ const Lobby={
   },
 
   _initSocket(){
-    // Try to connect to real server, fallback to offline bots
-    if(this.serverUrl){
-      try{
-        this.socket=io(this.serverUrl,{timeout:3000,reconnection:false});
-        this.socket.on('connect',()=>{
-          this.socket.emit('joinRoom',{code:this.code,name:'YOU',isHost:this.isHost});
-          this._addChatMsg('Connected to server ✓','#00ff88');
-        });
-        this.socket.on('playerJoined',d=>{
-          if(d.id!==this.socket.id){
-            this.players.push({id:d.id,name:d.name,ready:false,skin:SKINS[0]});
-            this._render();this._addChatMsg(d.name+' joined');
-          }
-        });
-        this.socket.on('playerReady',d=>{
-          const p=this.players.find(x=>x.id===d.id);
-          if(p){p.ready=d.ready;this._render();}
-        });
-        this.socket.on('playerLeft',d=>{
-          this.players=this.players.filter(x=>x.id!==d.id);this._render();
-          this._addChatMsg(d.name+' left');
-        });
-        this.socket.on('startGame',()=>UI.showLobbyMap());
-        this.socket.on('connect_error',()=>this._addChatMsg('Offline mode (bots only)','#ffaa00'));
-      }catch(e){}
-    } else {
-      this._addChatMsg('Offline mode — bots joining...','#ffaa00');
-    }
+    // Offline mode only (no server required)
+    this._addChatMsg('Offline mode — bots joining...','#ffaa00');
   },
 
   _addBots(){
@@ -1599,15 +1573,15 @@ const UI={
 const Game={
   state:'loading',
   scene:null,camera:null,renderer:null,clock:null,
-  audio:new AudioMgr(),particles:null,
+  audio:null,particles:null,
   selectedSkin:SKINS[0],selectedGrab:GRABPACKS[0],selectedTrail:TRAILS[0],
   selectedMap:null,activePerks:[],
   // player state
   keys:{},mouse:{dx:0,dy:0},
-  velocity:new THREE.Vector3(),
+  velocity:null,
   onGround:false,health:100,stamina:100,score:0,
   matchTime:300,matchTimer:null,
-  dashCD:0,isDashing:false,dashDir:new THREE.Vector3(),dashTimer:0,
+  dashCD:0,isDashing:false,dashDir:null,dashTimer:0,
   bhopCount:0,bhopTimer:0,bhopMult:1,
   flashlightOn:true,flashlight:null,
   yaw:0,pitch:0,locked:false,isPaused:false,
@@ -1621,7 +1595,7 @@ const Game={
   grabLines:{left:null,right:null},
   grabTargets:{left:null,right:null},
   grabExtending:{left:false,right:false},
-  grabPoints:{left:new THREE.Vector3(),right:new THREE.Vector3()},
+  grabPoints:null,
   grabHands:{left:null,right:null},
   // map
   mapRooms:[],doorways:[],
@@ -1635,6 +1609,10 @@ const Game={
   _looping:false,
 
   init(){
+    this.audio=new AudioMgr();
+    this.velocity=new THREE.Vector3();
+    this.dashDir=new THREE.Vector3();
+    this.grabPoints={left:new THREE.Vector3(),right:new THREE.Vector3()};
     this.clock=new THREE.Clock();
     this.scene=new THREE.Scene();
     this.camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,300);
